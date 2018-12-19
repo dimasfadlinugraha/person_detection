@@ -17,11 +17,13 @@ VIDEO_INPUT = environ.get('VIDEO_INPUT', 'uas_2.mp4')
 
 if __name__ == '__main__':
     centers = []
+    old_tracker = []
     current_frame = 0
 
     font = cv2.FONT_HERSHEY_PLAIN
     object_area_up = 12000
     object_area_down = 1000
+    position_diff = 2
 
     # HOG Descriptor Person Detector
     hog = cv2.HOGDescriptor()
@@ -84,6 +86,7 @@ if __name__ == '__main__':
             tracker.update(centers, current_frame, found_y)
 
             for person in tracker.tracks:
+                position_lock = True
                 if len(person.trace) > 1:
                     for j in range(len(person.trace) - 1):
                         # Draw trace line
@@ -103,8 +106,24 @@ if __name__ == '__main__':
                         cv2.putText(frame, 'ID: ' + str(person.track_id), (int(trace_x), int(trace_y)), font, 1,
                                     (255, 255, 255), 1, cv2.LINE_AA)
 
+                        for old_person in old_tracker:
+                            old_trace_i = len(old_person.trace) - 2
+                            old_trace_x = old_person.trace[0][0][0]
+                            old_trace_y = old_person.trace[0][1][0]
+
+                            if old_person.track_id == person.track_id and position_lock:
+                                if abs(int(old_trace_x) - int(trace_x)) < position_diff and abs(
+                                        int(old_trace_y) - int(trace_y)) < position_diff:
+                                    print "Person With ID {} are standing still at coordinate ({},{})".format(
+                                        person.track_id,
+                                        trace_x, trace_y)
+
+                                    position_lock = False
+
                     except:
                         pass
+
+            old_tracker = tracker.tracks
 
         cv2.imshow('Person Detection {}'.format(MODE), frame)
 
